@@ -1,5 +1,7 @@
 # mcp-ollama
 
+[![Glama score](https://glama.ai/mcp/servers/true-alter/mcp-ollama/badges/score.svg)](https://glama.ai/mcp/servers/true-alter/mcp-ollama)
+
 MCP server wrapping local [Ollama](https://ollama.com) models for offload from API-priced orchestrators.
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
