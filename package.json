@@ -1,12 +1,21 @@
 {
   "name": "mcp-ollama",
   "version": "1.0.0",
-  "description": "MCP server wrapping local Ollama models for Claude Code delegation",
+  "description": "MCP server wrapping local Ollama models — offload bulk generation, summarisation, classification, and code tasks from API-priced orchestrators to a model running on the user's own hardware.",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "mcp-ollama": "dist/index.js"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1"
@@ -14,5 +23,28 @@
   "devDependencies": {
     "typescript": "^5.7.0",
     "@types/node": "^22.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ollama",
+    "llm",
+    "local-first",
+    "claude-code",
+    "offload",
+    "routing"
+  ],
+  "license": "Apache-2.0",
+  "author": "Alter Meridian Pty Ltd (ABN 54 696 662 049)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/true-alter/mcp-ollama.git"
+  },
+  "homepage": "https://github.com/true-alter/mcp-ollama#readme",
+  "bugs": {
+    "url": "https://github.com/true-alter/mcp-ollama/issues"
   }
 }
