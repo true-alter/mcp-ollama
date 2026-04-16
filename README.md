@@ -1,5 +1,7 @@
 # mcp-ollama
 
+[![Glama score](https://glama.ai/mcp/servers/true-alter/mcp-ollama/badges/score.svg)](https://glama.ai/mcp/servers/true-alter/mcp-ollama)
+
 MCP server wrapping local [Ollama](https://ollama.com) models for offload from API-priced orchestrators.
 
 Exposes 9 tools that pass work to a local model (text generation, summarisation, code tasks, mechanical transforms, commit/PR/changelog drafting). The orchestrator decides what to route locally; this server does the routing.
