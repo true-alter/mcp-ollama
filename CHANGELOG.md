@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- `local_pull` now validates the model-name argument against
+  `^[a-z0-9][a-z0-9._/-]{0,127}$` before forwarding to the Ollama
+  registry, closing a Wave-3 pentest finding where caller-controlled
+  model strings reached the pull endpoint unsanitised.
+- `OLLAMA_HOST` is now gated to loopback (`localhost` / `127.0.0.1` /
+  `::1`) at startup. Operators with a legitimate remote-Ollama
+  deployment must opt in explicitly via `MCP_OLLAMA_ALLOW_REMOTE=1`;
+  the default refuses non-loopback hosts so a tampered env cannot be
+  used to exfiltrate prompts.
+
 ### Added
 
 - `CONTRIBUTING.md` and `SECURITY.md` for the public repo.
