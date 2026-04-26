@@ -16,8 +16,32 @@ import { z } from "zod";
 // Config
 // ---------------------------------------------------------------------------
 
-const OLLAMA_HOST = process.env.OLLAMA_HOST ?? "http://localhost:11434";
+const RAW_OLLAMA_HOST = process.env.OLLAMA_HOST ?? "http://localhost:11434";
+
+// Loopback gate: by default we refuse to talk to a non-loopback Ollama, so a
+// caller-controlled OLLAMA_HOST cannot be used to exfiltrate prompts to a
+// remote registry. Operators with a legitimate remote-Ollama deployment must
+// opt in explicitly via MCP_OLLAMA_ALLOW_REMOTE=1.
+{
+  const parsed = new URL(RAW_OLLAMA_HOST);
+  const host = parsed.hostname;
+  const isLoopback =
+    host === "localhost" || host === "127.0.0.1" || host === "::1";
+  if (!isLoopback && process.env.MCP_OLLAMA_ALLOW_REMOTE !== "1") {
+    throw new Error(
+      `OLLAMA_HOST must be loopback (got ${host}); set MCP_OLLAMA_ALLOW_REMOTE=1 to override`
+    );
+  }
+}
+
+const OLLAMA_HOST = RAW_OLLAMA_HOST;
 const DEFAULT_MODEL = process.env.OLLAMA_MODEL ?? "hermes3:8b";
+
+// Model name validation regex — guards against caller-controlled values
+// reaching the Ollama registry pull endpoint. Matches Ollama's published
+// naming conventions (lowercase + dot/underscore/slash/hyphen, leading
+// alnum, max 128 chars).
+const MODEL_NAME_RE = /^[a-z0-9][a-z0-9._/-]{0,127}$/;
 
 // ---------------------------------------------------------------------------
 // Ollama HTTP client
@@ -653,6 +677,11 @@ This tool handles registry pulls (e.g., 'qwen2.5:14b', 'deepseek-r1:8b').`,
       ),
   },
   async ({ model }) => {
+    if (!MODEL_NAME_RE.test(model)) {
+      throw new Error(
+        `Invalid model name: must match ${MODEL_NAME_RE.source}`
+      );
+    }
     const status = await ollamaPull(model);
     return {
       content: [
