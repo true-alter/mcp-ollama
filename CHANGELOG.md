@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- README install section now leads with `npm install -g mcp-ollama` /
+  `npx mcp-ollama` instead of a `git clone` path; the package is
+  distributed via npm and end-users should never need to visit GitHub
+  to install it.
+- Cross-reference to `@truealter/sdk` in the "Part of ALTER" section
+  now points at the npm package page rather than the GitHub repo.
+
 ### Security
 
 - `local_pull` now validates the model-name argument against

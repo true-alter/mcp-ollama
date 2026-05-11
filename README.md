@@ -25,13 +25,16 @@ The orchestrating model decides what to route where. This server is plumbing —
 
 ## Install
 
-### From source
+### Install (npm)
 
 ```bash
-git clone https://github.com/true-alter/mcp-ollama.git
-cd mcp-ollama
-npm install
-npm run build
+npm install -g mcp-ollama
+```
+
+Or invoke directly without installing:
+
+```bash
+npx mcp-ollama
 ```
 
 You also need a running Ollama instance with at least one model pulled:
@@ -148,7 +151,7 @@ Bug reports and small patches welcome — see [CONTRIBUTING.md](./CONTRIBUTING.m
 
 ## Part of ALTER
 
-`mcp-ollama` is maintained by [ALTER](https://truealter.com) as part of the identity infrastructure for the AI economy. The ALTER identity MCP server is hosted at `mcp.truealter.com` — see [`@truealter/sdk`](https://github.com/true-alter/alter-identity) for the TypeScript client.
+`mcp-ollama` is maintained by [ALTER](https://truealter.com) as part of the identity infrastructure for the AI economy. The ALTER identity MCP server is hosted at `mcp.truealter.com` — see [`@truealter/sdk`](https://www.npmjs.com/package/@truealter/sdk) for the TypeScript client.
 
 ## License
 
