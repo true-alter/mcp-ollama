@@ -1,5 +1,5 @@
 {
-  "name": "mcp-ollama",
+  "name": "@truealter/mcp-ollama",
   "version": "1.0.0",
   "description": "MCP server wrapping local Ollama models — offload bulk generation, summarisation, classification, and code tasks from API-priced orchestrators to a model running on the user's own hardware.",
   "type": "module",
