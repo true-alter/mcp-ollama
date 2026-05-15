@@ -3,7 +3,7 @@
 /**
  * MCP server wrapping local Ollama models for Claude Code delegation.
  *
- * Opus stays as the orchestrator — this server lets it offload bulk
+ * Opus stays as the orchestrator - this server lets it offload bulk
  * generation work (summarisation, extraction, drafting, classification)
  * to a local model running on the user's hardware.
  */
@@ -37,7 +37,7 @@ const RAW_OLLAMA_HOST = process.env.OLLAMA_HOST ?? "http://localhost:11434";
 const OLLAMA_HOST = RAW_OLLAMA_HOST;
 const DEFAULT_MODEL = process.env.OLLAMA_MODEL ?? "hermes3:8b";
 
-// Model name validation regex — guards against caller-controlled values
+// Model name validation regex - guards against caller-controlled values
 // reaching the Ollama registry pull endpoint. Matches Ollama's published
 // naming conventions (lowercase + dot/underscore/slash/hyphen, leading
 // alnum, max 128 chars).
@@ -142,7 +142,7 @@ to save tokens. Use this when the task is bulk text processing that doesn't
 require Opus-level reasoning: summarising documents, explaining code for docs,
 generating boilerplate, reformatting content, translating, etc.
 
-The local model (default: hermes3:8b) runs on the user's hardware — zero
+The local model (default: hermes3:8b) runs on the user's hardware - zero
 API cost, ~40 tok/s on a decent GPU.`,
   {
     prompt: z.string().describe("The prompt / task for the local model"),
@@ -282,7 +282,7 @@ parsing semi-structured data, sentiment analysis.`,
       ? `Output the results as: ${output_format}.`
       : "Output the results in the clearest structured format.";
 
-    const system = `You are a precise information extraction assistant. Extract exactly what is asked for — nothing more. Be accurate and complete. ${formatInstruction}`;
+    const system = `You are a precise information extraction assistant. Extract exactly what is asked for - nothing more. Be accurate and complete. ${formatInstruction}`;
 
     const prompt = `Task: ${task}
 
@@ -316,7 +316,7 @@ Results:`;
 
 server.tool(
   "local_draft",
-  `Draft text locally — commit messages, PR descriptions, docstrings, changelog
+  `Draft text locally - commit messages, PR descriptions, docstrings, changelog
 entries, documentation sections, or any formulaic text that follows a template
 or convention. Saves Opus tokens on boilerplate generation.`,
   {
@@ -383,7 +383,7 @@ Draft:`;
 server.tool(
   "local_code",
   `Code-aware local generation. Claude reads source code with Read/Grep (free),
-then delegates the TEXT GENERATION to local — docstrings, test stubs,
+then delegates the TEXT GENERATION to local - docstrings, test stubs,
 explanations, type annotations, inline comments, or review feedback.
 
 This is the primary tool for reducing API token usage on code tasks.
@@ -396,7 +396,7 @@ For larger contexts, break into focused chunks (one function, one class).`,
     code: z
       .string()
       .describe(
-        "Source code to work with — a function, class, module, or diff"
+        "Source code to work with - a function, class, module, or diff"
       ),
     task: z
       .enum([
@@ -409,7 +409,7 @@ For larger contexts, break into focused chunks (one function, one class).`,
         "refactor-suggest",
       ])
       .describe(
-        "What to generate: docstring (generate docstring), test (generate test stub), explain (explain the code), review (style/pattern review — NOT security), types (add type annotations), comments (add inline comments), refactor-suggest (suggest improvements)"
+        "What to generate: docstring (generate docstring), test (generate test stub), explain (explain the code), review (style/pattern review - NOT security), types (add type annotations), comments (add inline comments), refactor-suggest (suggest improvements)"
       ),
     language: z
       .string()
@@ -431,7 +431,7 @@ For larger contexts, break into focused chunks (one function, one class).`,
     const taskPrompts: Record<string, { system: string; instruction: string }> =
       {
         docstring: {
-          system: `You are a documentation expert. Write clear, concise docstrings following ${language} conventions. Use Australian English for prose, US English for identifiers. Include parameter types, return types, and a brief description. Do NOT include the original code — only output the docstring.`,
+          system: `You are a documentation expert. Write clear, concise docstrings following ${language} conventions. Use Australian English for prose, US English for identifiers. Include parameter types, return types, and a brief description. Do NOT include the original code - only output the docstring.`,
           instruction: `Write a docstring for the following ${language} code.${contextNote}`,
         },
         test: {
@@ -439,11 +439,11 @@ For larger contexts, break into focused chunks (one function, one class).`,
           instruction: `Generate test stubs for the following ${language} code. Cover the main path and key edge cases.${contextNote}`,
         },
         explain: {
-          system: `You are a senior developer explaining code to a colleague. Be concise — explain WHAT it does and WHY, not line-by-line. Use Australian English. Mention non-obvious design choices or gotchas.`,
+          system: `You are a senior developer explaining code to a colleague. Be concise - explain WHAT it does and WHY, not line-by-line. Use Australian English. Mention non-obvious design choices or gotchas.`,
           instruction: `Explain the following ${language} code.${contextNote}`,
         },
         review: {
-          system: `You are a code reviewer focused on style, patterns, naming, readability, and correctness. Do NOT review for security (that stays on Opus). Flag issues as: [STYLE], [NAMING], [BUG], [PATTERN], [READABILITY]. Be specific — cite the line or construct.`,
+          system: `You are a code reviewer focused on style, patterns, naming, readability, and correctness. Do NOT review for security (that stays on Opus). Flag issues as: [STYLE], [NAMING], [BUG], [PATTERN], [READABILITY]. Be specific - cite the line or construct.`,
           instruction: `Review the following ${language} code for style, patterns, and correctness.${contextNote}`,
         },
         types: {
@@ -451,11 +451,11 @@ For larger contexts, break into focused chunks (one function, one class).`,
           instruction: `Add type annotations to the following ${language} code.${contextNote}`,
         },
         comments: {
-          system: `You are adding inline comments to code. Only comment non-obvious logic — do NOT comment self-evident code. Comments should explain WHY, not WHAT. Use Australian English.`,
+          system: `You are adding inline comments to code. Only comment non-obvious logic - do NOT comment self-evident code. Comments should explain WHY, not WHAT. Use Australian English.`,
           instruction: `Add inline comments to non-obvious parts of the following ${language} code.${contextNote}`,
         },
         "refactor-suggest": {
-          system: `You are a senior developer suggesting refactoring improvements. Focus on: reducing complexity, improving naming, extracting helpers where justified (not premature abstraction), removing duplication. Do NOT suggest changes for their own sake — only flag genuine improvements. Output a numbered list of suggestions with brief rationale.`,
+          system: `You are a senior developer suggesting refactoring improvements. Focus on: reducing complexity, improving naming, extracting helpers where justified (not premature abstraction), removing duplication. Do NOT suggest changes for their own sake - only flag genuine improvements. Output a numbered list of suggestions with brief rationale.`,
           instruction: `Suggest refactoring improvements for the following ${language} code.${contextNote}`,
         },
       };
@@ -488,7 +488,7 @@ ${code}
 );
 
 // -- local_diff -------------------------------------------------------------
-// Summarise or analyse diffs locally — saves API tokens on PR descriptions,
+// Summarise or analyse diffs locally - saves API tokens on PR descriptions,
 // changelog entries, and commit messages from large diffs.
 
 server.tool(
@@ -533,16 +533,16 @@ if processed by Opus/Sonnet directly.`,
             "Write a PR description for the following diff.",
         },
         changelog: {
-          system: `You are writing changelog entries. Categorise as: Added, Changed, Fixed, Removed, Security, Infrastructure. Each entry should describe what changed from the user's perspective — not file names. Use Australian English.${styleNote}`,
+          system: `You are writing changelog entries. Categorise as: Added, Changed, Fixed, Removed, Security, Infrastructure. Each entry should describe what changed from the user's perspective - not file names. Use Australian English.${styleNote}`,
           instruction:
             "Write categorised changelog entries for the following diff.",
         },
         summary: {
-          system: `You are summarising code changes. Be concise — what changed and why. Group related changes. Use Australian English.${styleNote}`,
+          system: `You are summarising code changes. Be concise - what changed and why. Group related changes. Use Australian English.${styleNote}`,
           instruction: "Summarise the following diff.",
         },
         impact: {
-          system: `You are analysing the potential impact of code changes. List: what might break, what needs testing, what external systems are affected. Be specific — cite file paths and function names from the diff.${styleNote}`,
+          system: `You are analysing the potential impact of code changes. List: what might break, what needs testing, what external systems are affected. Be specific - cite file paths and function names from the diff.${styleNote}`,
           instruction:
             "Analyse the potential impact of the following diff. What might break?",
         },
@@ -576,7 +576,7 @@ if processed by Opus/Sonnet directly.`,
 server.tool(
   "local_transform",
   `Perform mechanical code transformations locally. These are pattern-based
-transforms that don't require architectural understanding — the kind of
+transforms that don't require architectural understanding - the kind of
 work that burns API tokens for no good reason.
 
 Use this for: converting between formats, renaming patterns, migrating
@@ -600,7 +600,7 @@ syntax, generating boilerplate from examples, etc.`,
   async ({ input, transform, language, model }) => {
     const langNote = language ? ` Output in ${language}.` : "";
 
-    const system = `You are a code transformation tool. Apply the requested transformation precisely. Output ONLY the transformed code — no explanations, no markdown fences unless the input had them. Preserve formatting and style conventions.${langNote}`;
+    const system = `You are a code transformation tool. Apply the requested transformation precisely. Output ONLY the transformed code - no explanations, no markdown fences unless the input had them. Preserve formatting and style conventions.${langNote}`;
 
     const prompt = `Transformation: ${transform}
 
@@ -643,7 +643,7 @@ what models are loaded and available for delegation.`,
       const params = m.details?.parameter_size ?? "?";
       const quant = m.details?.quantization_level ?? "?";
       const family = m.details?.family ?? "?";
-      return `- **${m.name}** — ${sizeGB} GB, ${params} params, ${quant} quantisation, family: ${family}`;
+      return `- **${m.name}** - ${sizeGB} GB, ${params} params, ${quant} quantisation, family: ${family}`;
     });
 
     return {
@@ -687,7 +687,7 @@ This tool handles registry pulls (e.g., 'qwen2.5:14b', 'deepseek-r1:8b').`,
       content: [
         {
           type: "text" as const,
-          text: `Pull complete: ${model} — ${status}`,
+          text: `Pull complete: ${model} - ${status}`,
         },
       ],
     };

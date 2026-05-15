@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `mcp-ollama` so the package can run as a global CLI.
 - `prepublishOnly` script to guarantee a fresh build before npm publish.
 
-## [1.0.0] — 2026-04-15
+## [1.0.0] - 2026-04-15
 
 ### Added
 
