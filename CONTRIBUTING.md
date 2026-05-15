@@ -1,6 +1,6 @@
 # Contributing to mcp-ollama
 
-Thanks for the interest. `mcp-ollama` is small and intentionally stays that way — routing work to a local Ollama process is the whole brief.
+Thanks for the interest. `mcp-ollama` is small and intentionally stays that way - routing work to a local Ollama process is the whole brief.
 
 ## Reporting bugs
 
@@ -9,7 +9,7 @@ Thanks for the interest. `mcp-ollama` is small and intentionally stays that way 
 - The tool you called, the client you called it from, and the model you were routing to.
 - The exact error message (full stderr if available).
 - Node version (`node --version`) and Ollama version (`ollama --version`).
-- Whether the underlying Ollama call reproduces via `curl` — helps us distinguish "server bug" from "Ollama is broken here".
+- Whether the underlying Ollama call reproduces via `curl` - helps us distinguish "server bug" from "Ollama is broken here".
 
 ## Small patches
 
@@ -32,7 +32,7 @@ Open an issue **before** the PR so we can talk about scope. Specifically: we are
 - TypeScript, strict mode. No `any` without a justifying comment.
 - ESM, top-level `await` is fine.
 - Prose: Australian English in README/docs, US English in code (`color`, `initialize`) to match ecosystem conventions.
-- No telemetry, no auto-update pingers, no background network activity — if a PR introduces any, it will not land.
+- No telemetry, no auto-update pingers, no background network activity - if a PR introduces any, it will not land.
 
 ## Licensing
 
