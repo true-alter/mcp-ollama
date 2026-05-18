@@ -128,7 +128,7 @@ function formatDuration(ns?: number): string {
 
 const server = new McpServer({
   name: "mcp-ollama",
-  version: "1.0.0",
+  version: "0.1.0",
 });
 
 // -- local_generate ---------------------------------------------------------
