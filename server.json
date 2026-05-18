@@ -7,13 +7,13 @@
     "source": "github"
   },
   "version_detail": {
-    "version": "1.0.0"
+    "version": "0.1.0"
   },
   "packages": [
     {
       "registry_name": "npm",
       "name": "mcp-ollama",
-      "version": "1.0.0",
+      "version": "0.1.0",
       "runtime_hint": "node",
       "package_arguments": [],
       "environment_variables": [
