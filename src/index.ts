@@ -65,6 +65,15 @@ interface OllamaModel {
   };
 }
 
+// TODO(D-SUBSTRATE-EMITTER-CONTRACT-1): Emit a token_burn substrate row after
+// each generation resolves (input_tokens=prompt_eval_count,
+// output_tokens=eval_count, tool="ollama", session_id minted once per server
+// process). The standalone wrapper at alter/scripts/alter-ollama already does
+// this for direct callers; the MCP path needs equivalent instrumentation so
+// `local_generate`/`local_code`/etc. burns also land in
+// ~/.local/share/alter-runtime/token-burn.jsonl. Source
+// ~/.local/share/alter-runtime/lib/substrate-emit.sh from a child shell, or
+// translate substrate_emit_token_burn into TypeScript.
 async function ollamaGenerate(
   model: string,
   system: string,
