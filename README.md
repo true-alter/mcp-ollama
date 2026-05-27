@@ -28,13 +28,13 @@ The orchestrating model decides what to route where. This server is plumbing - i
 ### Install (npm)
 
 ```bash
-npm install -g mcp-ollama
+npm install -g @truealter/mcp-ollama
 ```
 
 Or invoke directly without installing:
 
 ```bash
-npx mcp-ollama
+npx @truealter/mcp-ollama
 ```
 
 You also need a running Ollama instance with at least one model pulled:
