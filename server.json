@@ -1,0 +1,12 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "io.github.true-alter/mcp-ollama",
+  "description": "MCP server wrapping local Ollama models for offload from API-priced orchestrators. Nine tools: generation, summarisation, analysis, drafting, code tasks, diff-driven tasks, mechanical transforms, model listing, model pulling.",
+  "repository": {
+    "url": "https://github.com/true-alter/mcp-ollama",
+    "source": "github"
+  },
+  "version_detail": {
+    "version": "0.1.0"
+  }
+}
