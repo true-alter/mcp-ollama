@@ -27,7 +27,7 @@ Out-of-scope concerns include vulnerabilities in Ollama itself (report upstream 
 
 ## Supported versions
 
-Only the most recent `1.x` release receives security fixes. There is no long-term support branch.
+Only the most recent `0.x` release receives security fixes. There is no long-term support branch.
 
 ## Coordinated disclosure
 

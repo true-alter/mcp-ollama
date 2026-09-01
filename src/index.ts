@@ -82,15 +82,16 @@ interface OllamaVisionResponse {
 // ---------------------------------------------------------------------------
 // token_burn substrate emission
 // ---------------------------------------------------------------------------
-// Every local generation is a real (zero-API-cost) burn that the routing-layer
-// accounting wants to see, so each verb emits a token_burn row into
-// ~/.local/share/alter-runtime/token-burn.jsonl. Rather than re-implement the
-// consent-gated / identity-gated JSONL contract in TypeScript (which would
-// drift from the canonical shell emitter), we reuse the existing helper by
-// sourcing it in a short-lived child bash and calling substrate_emit_token_burn.
-// The emit is best-effort and fire-and-forget: any failure (no bash, no jq,
-// consent denied, helper absent) degrades to a silent no-op and NEVER affects
-// the tool result. The session id is minted once per server process.
+// Every local generation runs on your own hardware at no API cost, and this
+// server keeps a local tally of it in
+// ~/.local/share/alter-runtime/token-burn.jsonl. The write goes through a
+// helper script the alter runtime installs, rather than being reimplemented
+// here, so there is one writer and one format.
+//
+// The write is best-effort and fire-and-forget. If bash, jq or the helper is
+// missing, or the helper declines, it degrades to a silent no-op and never
+// affects the tool result. Nothing about it leaves your machine. The session
+// id is minted once per server process and is local to it.
 const SESSION_ID = randomUUID();
 const SUBSTRATE_EMIT_LIB = pathResolve(
   homedir(),
@@ -105,12 +106,10 @@ function emitTokenBurn(
 ): void {
   try {
     if (!existsSync(SUBSTRATE_EMIT_LIB)) return; // helper not installed -> no-op
-    // Positional contract (substrate-emit.sh):
-    //   $1=tool $2=session_id $3=machine_id $4=model
-    //   $5=input_tokens $6=cache_read $7=cache_creation $8=output_tokens
-    //   $9=transcript_messages $10=provenance_class $11=consent_tier
-    // machine_id left empty (helper stores null); provenance_class must be
-    // "active_composition" (the only class the consent gate authorises).
+    // Values are passed as positional arguments rather than interpolated into
+    // the script text, so nothing a caller supplies is ever parsed as shell.
+    // The helper owns the field order and the file format; this call site only
+    // supplies the values it holds.
     const script =
       `. "$SUBSTRATE_EMIT_LIB" 2>/dev/null && ` +
       `substrate_emit_token_burn "$1" "$2" "" "$3" "$4" 0 0 "$5" 0 active_composition 2>/dev/null || true`;
@@ -181,8 +180,8 @@ async function ollamaGenerate(
 // -- Vision generation (raw /api/generate with images[]) --------------------
 // local_analyze / ollamaGenerate are TEXT-ONLY (no image field). A vision model
 // (qwen2.5vl:7b) needs the raw multimodal path: images[] carries base64 PNGs.
-// This is the bridge equivalent of the .claude/skills/visual-check/see.py
-// primitive, so the routing layer can SEE a render through one MCP surface.
+// so a caller can have a local vision model look at a rendered image through
+// the same MCP surface the text verbs use.
 async function ollamaVision(
   model: string,
   prompt: string,
@@ -257,7 +256,7 @@ function formatDuration(ns?: number): string {
 
 const server = new McpServer({
   name: "mcp-ollama",
-  version: "0.1.0",
+  version: "0.2.0",
 });
 
 // -- local_generate ---------------------------------------------------------
@@ -826,16 +825,16 @@ This tool handles registry pulls (e.g., 'qwen2.5:14b', 'deepseek-r1:8b').`,
 // -- local_vision -----------------------------------------------------------
 // The vision SEE primitive as an MCP verb. local_analyze is text-only; this
 // reaches the multimodal /api/generate path so a caller can have a local VLM
-// SEE a rendered surface. It is the Tier-L "eyes" of the visual-check loop:
-// it REPORTS what is on screen (populated vs degraded, legibility, structure),
-// it never ranks severity or greenlights a change (that is Tier-C's job).
+// SEE a rendered surface. It REPORTS what is on screen (populated versus
+// degraded, legibility, structure) and never ranks severity or greenlights a
+// change, because a local vision model reads pixels well and judges badly.
 
 const DEFAULT_VISION_MODEL =
   process.env.OLLAMA_VISION_MODEL ?? "qwen2.5vl:7b";
 
-// Reporting rubrics (mirror .claude/skills/visual-check/see.py). Deliberately a
-// REPORTING task, not a judgment task: the local VLM reads pixels reliably but
-// ranks severity and domain badly, so we ask it only for what it can do.
+// Reporting rubrics. Deliberately a REPORTING task, not a judgment task: the
+// local vision model reads pixels reliably but ranks severity and domain
+// badly, so we ask it only for what it can do.
 const VISION_RUBRICS: Record<string, string> = {
   see:
     "You are a UI observer. Report ONLY what is literally visible. Do not praise, do not " +
@@ -874,11 +873,10 @@ server.tool(
 what is literally on screen - for zero API cost. local_analyze is TEXT-ONLY;
 this is the multimodal path.
 
-This is the "eyes" tier: it REPORTS (is the main content populated or blank/
-error, what regions exist, any illegible/clipped text, what the eye lands on
-first). It does NOT rank severity, judge on-brand, or greenlight a change - a
-local VLM reads pixels well but ranks badly, so keep the judgment on the
-attended (Opus) session.
+It REPORTS (is the main content populated or blank/error, what regions exist,
+any illegible/clipped text, what the eye lands on first). It does NOT rank
+severity, judge on-brand, or greenlight a change - a local vision model reads
+pixels well but ranks badly, so keep the judgment on the calling model.
 
 Modes: 'see' (full structural report), 'emptystate' (populated-vs-degraded data
 check), 'legibility' (readability faults). Feed near-full-resolution PNGs;

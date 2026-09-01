@@ -31,11 +31,11 @@
   ],
   "gates": [],
   "verified_zero": {
-    "registry_repo": "true-alter/alter",
+    "registry_repo": "true-alter",
     "registry_ref": "95d188bede0facabb11bde0f436330511dbf6210",
     "registry_digest": "ba7952b3d101a065",
     "registry_gate_count": 26,
     "checked_on": "2026-09-01",
-    "statement": "This repository's 18 tracked files were matched against every one of the 22 closed gates in the central registry and none matched. The server wraps a local Ollama endpoint over the MCP SDK and holds no ALTER identity mechanism, no trait or inference code, no Nest or alterfile serialiser, and no router or settlement path. Run with scripts/disclosure-boundary-check.py's check_verified_zero_scan against the central gates at the ref above, verdict GREEN."
+    "statement": "Every tracked file in this repository was checked against every closed gate at the ref and digest above, and none matched. The file count is deliberately not restated here, because it changes on every add and a stale number reads as a stale verdict. The server wraps a local Ollama endpoint over the MCP SDK. It holds no ~alter identity mechanism, no trait or inference code, and no payment path. Verdict GREEN."
   }
 }

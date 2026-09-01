@@ -3,15 +3,15 @@
 # Triggers on v*.*.* tag push. Pre-requisites for a working publish:
 #   1. A trusted publisher configured for this package on npmjs.com, naming
 #      this repository and this workflow file. There is no secret to set. The
-#      ruling is that every ALTER package goes to npm through trusted
+#      ruling is that every ~alter package goes to npm through trusted
 #      publishing on GitHub OIDC, with the package's own "require 2FA and
 #      disallow tokens" setting on, which closes the token route while
 #      leaving OIDC working.
 #   2. The npm package is registered under @truealter (run `npm access` once).
-#   3. The target version tag is pushed (`git tag v0.1.0 && git push --tags`).
+#   3. The target version tag is pushed (`git tag -s v0.2.0 && git push --tags`).
 #
-# Actions are pinned to full commit SHAs (H-001, pre-public audit 2026-04-18)
-# to defend against tag-moving supply-chain attacks on the publish path.
+# Actions are pinned to full commit SHAs, to defend against tag-moving
+# supply-chain attacks on the publish path.
 #
 # Docs: https://docs.npmjs.com/generating-provenance-statements
 #       https://docs.npmjs.com/generating-provenance-statements#provenance-limitations

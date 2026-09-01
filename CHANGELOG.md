@@ -25,10 +25,10 @@ and reachable only by cloning it.
 - The release workflow now cuts a GitHub release on every publish, with the
   notes read from this file keyed on the version rather than on position. This
   is the same mechanism the CLI and SDK mirrors carry.
-- Cross-reference to `@truealter/sdk` in the "Part of ALTER" section now points
-  at the npm package page rather than the GitHub repo. An earlier entry claimed
-  this was already done; the table still carried the repository link, so it is
-  done here.
+- Cross-reference to `@truealter/sdk` in the closing section now points at the
+  npm package page rather than the GitHub repo. An earlier entry claimed this
+  was already done; the table still carried the repository link, so it is done
+  here.
 
 ### Security
 

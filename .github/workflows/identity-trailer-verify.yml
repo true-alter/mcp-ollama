@@ -1,6 +1,6 @@
 # Commit identity trailer verification.
 #
-# ALTER commits record WHO acted and WHAT drafted or executed the work, as git
+# ~alter commits record WHO acted and WHAT drafted or executed the work, as git
 # trailers on the commit message:
 #
 #   Acted-By:      the person who owns the decision

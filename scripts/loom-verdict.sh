@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
-# loom-verdict.sh, this repository's own pre-publish verdict.
+# This repository's own pre-publish verdict.
 #
-# The monorepo's Loom Tier-0 validator does not apply here. Its checks are
-# scoped backend pytest, mypy and vitest over a Python and Next.js tree. This
-# is a small TypeScript MCP server. Without this file the publish chokepoint
-# reads "the monorepo validator is not in this repo" as "this branch has been
-# judged by nothing", and halts, which is the correct refusal and the reason
-# this file exists rather than an argument against it.
+# This repository defines what green means for itself rather than inheriting a
+# definition written for a different stack. Reporting no verdict at all reads as
+# unjudged rather than as passing, which is the correct way round, so this file
+# says it explicitly.
 #
 # What is green here is exactly what .github/workflows/ci.yml runs, plus the
 # manifest check the release path depends on:
@@ -17,7 +15,7 @@
 #      registry rejects a manifest that does not validate and the rejection
 #      otherwise lands on whoever runs the submit, not on the commit.
 #
-# No declared-red carve-out. Every failure halts.
+# There are no exemptions. Every failure halts.
 set -uo pipefail
 
 cd "$(dirname "$0")/.."

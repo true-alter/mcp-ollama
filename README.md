@@ -370,7 +370,8 @@ To report a security issue, see [SECURITY.md](./SECURITY.md).
 
 <details><summary><h3>The protocols underneath it</h3></summary>
 
-The record formats are open Internet-Drafts, so somebody else's implementation reads and writes the same records this one does without asking us. These are the drafts this repository actually rests on.
+The record formats are open Internet-Drafts, so somebody else's implementation reads and writes the same records this one does without asking us. These are the drafts those formats are specified by. This server does not
+implement them itself; it runs beside the components that do.
 
 | Draft | What it specifies |
 |---|---|

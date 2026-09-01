@@ -21,6 +21,36 @@ jobs:
       - run: npm ci
       - run: npm run build
 
+  leak-scan:
+    # Everything in this repository is public from the moment it is pushed, so
+    # a comment written for a maintainer is exposed from the commit that adds it
+    # rather than from the release that ships it. A publish-time check is too
+    # late for that, so this runs the same class at pull-request time.
+    #
+    # It runs after a build so it can read dist/, which is what actually ships
+    # and is not tracked.
+    #
+    # fetch-depth: 0 is required, not tidiness. The scan reads commit messages
+    # as well as files, and a default shallow checkout resolves no base ref, so
+    # the message half would read zero commits and report clean.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 scripts/leak-scan.py
+        env:
+          LEAK_SCAN_BASE: origin/${{ github.base_ref || 'main' }}
+
   server-manifest:
     # The registry rejects a manifest that does not validate, and the rejection
     # lands on whoever runs the submit rather than on the commit that broke it.
