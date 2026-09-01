@@ -31,10 +31,8 @@
   ],
   "gates": [],
   "verified_zero": {
-    "registry_repo": "true-alter",
     "registry_ref": "95d188bede0facabb11bde0f436330511dbf6210",
     "registry_digest": "ba7952b3d101a065",
-    "registry_gate_count": 26,
     "checked_on": "2026-09-01",
     "statement": "Every tracked file in this repository was checked against every closed gate at the ref and digest above, and none matched. The file count is deliberately not restated here, because it changes on every add and a stale number reads as a stale verdict. The server wraps a local Ollama endpoint over the MCP SDK. It holds no ~alter identity mechanism, no trait or inference code, and no payment path. Verdict GREEN."
   }
