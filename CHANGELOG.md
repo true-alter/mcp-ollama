@@ -7,14 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-01
+
+First release published to npm. Everything below has been in the repository
+and reachable only by cloning it.
+
 ### Changed
 
-- README install section now leads with `npm install -g mcp-ollama` /
-  `npx mcp-ollama` instead of a `git clone` path; the package is
+- README install section leads with `npm install -g @truealter/mcp-ollama` /
+  `npx -y @truealter/mcp-ollama` instead of a `git clone` path; the package is
   distributed via npm and end-users should never need to visit GitHub
-  to install it.
-- Cross-reference to `@truealter/sdk` in the "Part of ALTER" section
-  now points at the npm package page rather than the GitHub repo.
+  to install it. The SCOPED name is the correct one: the unscoped `mcp-ollama`
+  on the public registry belongs to an unrelated publisher.
+- The client-registration step no longer points at `$PWD/dist/index.js` from a
+  clone. A reader who installed the package has no clone, so the path it told
+  them to write did not exist on their machine.
+- The release workflow now cuts a GitHub release on every publish, with the
+  notes read from this file keyed on the version rather than on position. This
+  is the same mechanism the CLI and SDK mirrors carry.
+- Cross-reference to `@truealter/sdk` in the "Part of ALTER" section now points
+  at the npm package page rather than the GitHub repo. An earlier entry claimed
+  this was already done; the table still carried the repository link, so it is
+  done here.
 
 ### Security
 
@@ -30,6 +44,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `local_vision` is documented for the first time. It has been in the server
+  and in the README's tool table since before this file mentioned it, which
+  left the changelog reading nine tools against a server that ships ten.
 - `CONTRIBUTING.md` and `SECURITY.md` for the public repo.
 - Docker usage, troubleshooting, security-posture, and model-selection
   guidance in the README.

@@ -53,6 +53,38 @@ jobs:
       - run: npm install -g npm@^11.5.1
 
       - run: npm ci
+
+      # The tag is pushed by hand, so nothing else makes it agree with the
+      # manifest. A mismatch publishes one version under another version's
+      # name, and npm has no undo: the wrong number is taken forever and the
+      # GitHub release below would then be cut against a tag describing a
+      # different tree. Cheap to check, impossible to walk back.
+      - name: Assert the tag names the version in package.json
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          tag="${GITHUB_REF_NAME}"
+          if [ "v${version}" != "${tag}" ]; then
+            echo "tag ${tag} does not name package.json version ${version}." >&2
+            exit 1
+          fi
+          echo "tag ${tag} matches package.json ${version}."
+
+      # The server manifest names the npm package AT A VERSION and the MCP
+      # registry resolves that identifier. If it lags the manifest, the
+      # registry entry points at a version that does not exist yet.
+      - name: Assert server.json names the same version
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          top=$(node -p "require('./server.json').version")
+          pkg=$(node -p "require('./server.json').packages[0].version")
+          if [ "$top" != "$version" ] || [ "$pkg" != "$version" ]; then
+            echo "server.json carries ${top}/${pkg}, package.json carries ${version}." >&2
+            exit 1
+          fi
+          echo "server.json matches package.json ${version}."
+
       - run: npm run build
 
       # No NODE_AUTH_TOKEN, deliberately. npm reads the OIDC token that
@@ -60,6 +92,56 @@ jobs:
       # nothing long-lived sits on this path and this repository holds no
       # credential to leak.
       - run: npm publish --access public --provenance
+
+  github_release:
+    # A reader who arrives from the npm listing lands on this repository, and
+    # until now it has carried no tags and no releases, so the page looked
+    # like nothing had ever been cut from it.
+    #
+    # Separate job rather than a step in the job above, so contents: write
+    # sits only where a release is created and the job holding the identity
+    # that reaches the registry keeps contents read-only.
+    needs: npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Cut the release
+        # Idempotent. A re-run on a version already cut stands down rather
+        # than failing the workflow.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          tag="${GITHUB_REF_NAME}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "release: ${tag} already exists, nothing to cut."
+            exit 0
+          fi
+          notes=$(mktemp)
+          {
+            echo "\`@truealter/mcp-ollama@${version}\` is on npm, with provenance."
+            echo
+            echo '```'
+            echo "npm install -g @truealter/mcp-ollama"
+            echo '```'
+            # This version's CHANGELOG section, keyed on the VERSION rather
+            # than on position. Keying on position takes the newest section,
+            # which is `## [Unreleased]`, so every cut would carry the notes
+            # for work that is not in it.
+            if [ -f CHANGELOG.md ]; then
+              body=$(awk -v v="$version" '$0 ~ "^## \\[" v "\\]" {f=1; next} f && /^## /{exit} f{print}' CHANGELOG.md)
+              if [ -n "$body" ]; then
+                echo
+                echo "$body"
+              fi
+            fi
+          } > "$notes"
+          gh release create "$tag" --title "$tag" --notes-file "$notes" --target "${GITHUB_SHA}"
+          echo "release: cut ${tag} at ${GITHUB_SHA}."
 
   registry:
     # The registry entry names the npm package at a version, so it cannot be

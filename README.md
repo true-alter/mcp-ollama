@@ -117,17 +117,24 @@ happens to be maintained by the same people.
 ## Install
 
 ```bash
-npm install @truealter/mcp-ollama
+npm install -g @truealter/mcp-ollama
 ```
 
-The package ships the build already done. `dist/index.js`, the file your
-client will point at, lands at
-`node_modules/@truealter/mcp-ollama/dist/index.js` under wherever you ran the
-install. CI builds it against Node 18, 20 and 22 before publish, so anything
-in that range is known to work at runtime.
+That puts one command on your PATH, `mcp-ollama`, which is the process your
+client launches. The package ships the build already done, so there is no
+compile step and no toolchain to have installed first. CI builds it against
+Node 18, 20 and 22 before publish, so anything in that range is known to work
+at runtime.
 
-Nothing lands outside the directory you installed into. No global binary, no
-PATH entry, no service, no background process.
+If you would rather install nothing at all, `npx -y @truealter/mcp-ollama`
+fetches it on first use and runs the same process. That is the form used in
+the client configuration below.
+
+The scoped name is the one to type. The unscoped `mcp-ollama` on the public
+registry belongs to an unrelated publisher and is not this package.
+
+Nothing is installed as a service and nothing runs in the background. Your
+client starts the process when it needs it and stops it when it is done.
 
 ## Routing your first job
 
@@ -145,14 +152,14 @@ generations. Heavier models are worth having for code work, and
 ### 2. Register the server with your client
 
 ```bash
-claude mcp add --transport stdio ollama -- node "$PWD/dist/index.js"
+claude mcp add --transport stdio ollama -- npx -y @truealter/mcp-ollama
 ```
 
-Run that from the directory you cloned into, or write the absolute path
-yourself. Cursor, Cline and anything else MCP-aware take the same shape in
-their own config. The client launches the process; you never run it by hand
-except to debug, and if you do, `node dist/index.js` sits there waiting on
-stdin, which is correct rather than broken.
+If you installed globally, `-- mcp-ollama` works just as well and skips the
+fetch. Cursor, Cline and anything else MCP-aware take the same shape in their
+own config. The client launches the process; you never run it by hand except
+to debug, and if you do, it sits there waiting on stdin, which is correct
+rather than broken.
 
 ### 3. Ask your client what is on the host
 
@@ -383,7 +390,7 @@ One identity rail, several ways in.
 | **[`@truealter/cli`](https://www.npmjs.com/package/@truealter/cli)** | The command line, and the front door for a person. |
 | **[homebrew-tap](https://github.com/true-alter/homebrew-tap)** | That command line, packaged for macOS and Linux. |
 | **[runtime](https://github.com/true-alter/runtime)** | The daemon that keeps your `~handle` known on your own machine. |
-| **[sdk](https://github.com/true-alter/sdk)** | Reading identity from your own code. |
+| **[`@truealter/sdk`](https://www.npmjs.com/package/@truealter/sdk)** | Reading identity from your own code. |
 | **[obsidian](https://github.com/true-alter/obsidian)** | ~Alter inside an Obsidian vault, on-device. |
 | **mcp-ollama** | Local models, for work that should stay on the machine it runs on. **You are here.** |
 
