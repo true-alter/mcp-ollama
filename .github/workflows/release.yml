@@ -91,7 +91,26 @@ jobs:
       # id-token: write mints and exchanges it with the registry itself, so
       # nothing long-lived sits on this path and this repository holds no
       # credential to leak.
-      - run: npm publish --access public --provenance
+      #
+      # The version check below is not defensive tidiness, it is what makes
+      # the first tag work at all. npm will not show a package's Trusted
+      # Publisher section until at least one version exists, so the very
+      # first publish of any package can never come from this workflow
+      # (npm/cli#8544, open). 0.2.0 was therefore published by hand under
+      # 2FA, which mints no token and leaves the trusted-publishing ruling
+      # intact, and the publisher was configured afterwards. Without this
+      # check the tag that follows that bootstrap dies on EPUBLISHCONFLICT
+      # and takes the release cut and the registry submission down with it,
+      # because both of those jobs need this one.
+      - name: Publish, unless this version is already on the registry
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          if npm view "@truealter/mcp-ollama@${version}" version >/dev/null 2>&1; then
+            echo "@truealter/mcp-ollama@${version} is already on npm. Skipping."
+            exit 0
+          fi
+          npm publish --access public --provenance
 
   github_release:
     # A reader who arrives from the npm listing lands on this repository, and
