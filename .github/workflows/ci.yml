@@ -20,3 +20,15 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+
+  server-manifest:
+    # The registry rejects a manifest that does not validate, and the rejection
+    # lands on whoever runs the submit rather than on the commit that broke it.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install jsonschema
+      - run: python3 scripts/validate-server-json.py

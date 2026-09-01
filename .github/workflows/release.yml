@@ -1,0 +1,97 @@
+# npm publish with provenance for @truealter/mcp-ollama.
+#
+# Triggers on v*.*.* tag push. Pre-requisites for a working publish:
+#   1. A trusted publisher configured for this package on npmjs.com, naming
+#      this repository and this workflow file. There is no secret to set. The
+#      ruling is that every ALTER package goes to npm through trusted
+#      publishing on GitHub OIDC, with the package's own "require 2FA and
+#      disallow tokens" setting on, which closes the token route while
+#      leaving OIDC working.
+#   2. The npm package is registered under @truealter (run `npm access` once).
+#   3. The target version tag is pushed (`git tag v0.1.0 && git push --tags`).
+#
+# Actions are pinned to full commit SHAs (H-001, pre-public audit 2026-04-18)
+# to defend against tag-moving supply-chain attacks on the publish path.
+#
+# Docs: https://docs.npmjs.com/generating-provenance-statements
+#       https://docs.npmjs.com/generating-provenance-statements#provenance-limitations
+
+name: Release
+
+on:
+  push:
+    tags:
+      # Exclude pre-release suffixes (v1.0.0-rc1 etc); pre-releases are a separate workflow.
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
+  id-token: write # mints the OIDC token for trusted publishing and provenance alike
+
+jobs:
+  npm:
+    # Hosted runner is REQUIRED here, not a preference: npm provenance mints
+    # its OIDC token from GitHub's own Actions identity provider, which only
+    # issues to GitHub-hosted runners. A self-hosted runner cannot produce
+    # that token, so --provenance would fail outright. This repository is
+    # public, so unlike a private source repo the registry will accept the
+    # attestation once minted.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      # npm's OIDC exchange with the registry arrived in 11.5.1, and a Node
+      # image can carry an npm older than that. Pinning the floor here makes a
+      # too-old npm fail at this step, where the message names the cause,
+      # rather than at the step below, where the same fault reads as an
+      # authentication failure and sends the reader hunting for a token.
+      - run: npm install -g npm@^11.5.1
+
+      - run: npm ci
+      - run: npm run build
+
+      # No NODE_AUTH_TOKEN, deliberately. npm reads the OIDC token that
+      # id-token: write mints and exchanges it with the registry itself, so
+      # nothing long-lived sits on this path and this repository holds no
+      # credential to leak.
+      - run: npm publish --access public --provenance
+
+  registry:
+    # The registry entry names the npm package at a version, so it cannot be
+    # submitted before that version exists. Gating on the npm job is what
+    # orders the two; without it a fast submit races its own package and the
+    # registry rejects an identifier it cannot resolve.
+    needs: npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # mcp-publisher's github-oidc provider exchanges this for a registry
+      # token. It proves the workflow runs in a repository owned by
+      # true-alter, which is what authorises the io.github.true-alter
+      # namespace. No secret, same posture as the job above.
+      id-token: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Fetch mcp-publisher
+        run: |
+          set -euo pipefail
+          curl -fsSL -o publisher.tar.gz \
+            "https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz"
+          tar -xzf publisher.tar.gz mcp-publisher
+          chmod +x mcp-publisher
+        env:
+          # Pinned, not latest. An unpinned release download makes every run
+          # depend on whatever the registry shipped that morning.
+          MCP_PUBLISHER_VERSION: v1.8.1
+
+      - name: Submit the entry
+        run: |
+          set -euo pipefail
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish

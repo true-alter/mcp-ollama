@@ -1,7 +1,7 @@
 {
   "name": "@truealter/mcp-ollama",
   "version": "0.1.0",
-  "private": true,
+  "mcpName": "io.github.true-alter/mcp-ollama",
   "description": "MCP server wrapping local Ollama models - offload bulk generation, summarisation, classification, and code tasks from API-priced orchestrators to a model running on the user's own hardware.",
   "type": "module",
   "main": "dist/index.js",

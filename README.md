@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="./docs/alter-mark.svg" alt="" height="96">
+<img src="https://raw.githubusercontent.com/true-alter/mcp-ollama/main/docs/alter-mark.svg" alt="" height="96">
 
 # ~alter mcp-ollama
 
-**Hands the work that shouldn't leave your machine to the model already sitting on it.**
+**Hands the work that shouldn't leave your machine to the model already sitting on it**
 
 [![~alter](https://img.shields.io/badge/~alter-identity%20infrastructure-C9A84C?style=flat-square)](https://truealter.com)
 [![MCP](https://img.shields.io/badge/MCP-stdio-555?style=flat-square)](https://modelcontextprotocol.io)
@@ -19,24 +19,19 @@
 
 An MCP server that hands work to [Ollama](https://ollama.com) on the same
 machine and passes the answer back. Ten tools over stdio. Your client calls one
-of them, Ollama does the generating on your own GPU, and no token is billed to
-anyone.
+of them, Ollama does the generating on your own GPU, and nothing is charged to
+an API account.
 
-What it's for is the mechanical bulk of a working session. Docstrings, commit
-messages, PR descriptions, changelog entries, classification and tagging,
-summarising a long file, converting one format into another, and having a small
-vision model look at a screenshot and report what's on screen. None of that
-needs a frontier model, and most of it gets one anyway because that's what your
-client already has an API key for.
+Most of a working session is mechanical. Docstrings, commit messages, PR
+descriptions, changelog entries, classification and tagging, summarising a long
+file, converting one format into another, and having a small vision model look
+at a screenshot and report what's on screen. None of that needs a frontier
+model, and most of it gets one anyway, because that's what your client already
+has an API key for.
 
-`local_diff` turns a staged diff into a commit message, a PR description, a
-changelog or an impact read. `local_code` writes a docstring, a test stub, type
-annotations or a style review over a chunk of source. `local_analyze` pulls
-structure out of text in an output shape you name, `local_summarize` compresses
-bulk text, and `local_transform` handles pattern migrations and format
-conversions. `local_generate` and `local_draft` cover free-form and formulaic
-prose. `local_models` and `local_pull` report and extend what's on the host, and
-`local_vision` reads a render. Full table [below](#the-tools).
+Hand it a staged diff and a commit message comes back. Hand it a chunk of
+source and you get a docstring, a test stub or a set of type annotations. All
+ten tools, and what each one takes, are in [the tools](#the-tools).
 
 The orchestrator decides what gets routed here. This server makes no judgement
 about what belongs local, and it doesn't stream, queue or cache. It keeps
@@ -115,25 +110,24 @@ something is unclear or does not hold up, say so.
 </details>
 
 The ~alter command line is where a person meets ~alter, and this isn't that.
-`mcp-ollama` has no command of its own worth typing, isn't on any package
-registry, and never asks you to log in to anything. It's a process your MCP
-client starts and stops, and it happens to be maintained by the same people.
+`mcp-ollama` has no command of its own worth typing and never asks you to log
+in to anything. It's a process your MCP client starts and stops, and it
+happens to be maintained by the same people.
 
 ## Install
 
 ```bash
-git clone https://github.com/true-alter/mcp-ollama.git && cd mcp-ollama && npm install && npm run build
+npm install @truealter/mcp-ollama
 ```
 
-The build is the install. `dist/` isn't tracked in the repository, so
-`npm run build` compiling `src/index.ts` into `dist/index.js` is what produces
-the file your client will point at. CI builds against Node 18, 20 and 22, so
-anything in that range is known to work.
+The package ships the build already done. `dist/index.js`, the file your
+client will point at, lands at
+`node_modules/@truealter/mcp-ollama/dist/index.js` under wherever you ran the
+install. CI builds it against Node 18, 20 and 22 before publish, so anything
+in that range is known to work at runtime.
 
-Nothing lands outside the directory you cloned into. No global binary, no PATH
-entry, no service, no background process. There's no registry install either,
-because the package is marked private and `npm install @truealter/mcp-ollama`
-won't resolve.
+Nothing lands outside the directory you installed into. No global binary, no
+PATH entry, no service, no background process.
 
 ## Routing your first job
 
