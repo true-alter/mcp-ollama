@@ -1,0 +1,204 @@
+# npm publish with provenance for @truealter/mcp-ollama.
+#
+# Triggers on v*.*.* tag push. Pre-requisites for a working publish:
+#   1. A trusted publisher configured for this package on npmjs.com, naming
+#      this repository and this workflow file. There is no secret to set. The
+#      ruling is that every ~alter package goes to npm through trusted
+#      publishing on GitHub OIDC, with the package's own "require 2FA and
+#      disallow tokens" setting on, which closes the token route while
+#      leaving OIDC working.
+#   2. The npm package is registered under @truealter (run `npm access` once).
+#   3. The target version tag is pushed (`git tag -s v0.2.0 && git push --tags`).
+#
+# Actions are pinned to full commit SHAs, to defend against tag-moving
+# supply-chain attacks on the publish path.
+#
+# Docs: https://docs.npmjs.com/generating-provenance-statements
+#       https://docs.npmjs.com/generating-provenance-statements#provenance-limitations
+
+name: Release
+
+on:
+  push:
+    tags:
+      # Exclude pre-release suffixes (v1.0.0-rc1 etc); pre-releases are a separate workflow.
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
+  id-token: write # mints the OIDC token for trusted publishing and provenance alike
+
+jobs:
+  npm:
+    # Hosted runner is REQUIRED here, not a preference: npm provenance mints
+    # its OIDC token from GitHub's own Actions identity provider, which only
+    # issues to GitHub-hosted runners. A self-hosted runner cannot produce
+    # that token, so --provenance would fail outright. This repository is
+    # public, so unlike a private source repo the registry will accept the
+    # attestation once minted.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      # npm's OIDC exchange with the registry arrived in 11.5.1, and a Node
+      # image can carry an npm older than that. Pinning the floor here makes a
+      # too-old npm fail at this step, where the message names the cause,
+      # rather than at the step below, where the same fault reads as an
+      # authentication failure and sends the reader hunting for a token.
+      - run: npm install -g npm@^11.5.1
+
+      - run: npm ci
+
+      # The tag is pushed by hand, so nothing else makes it agree with the
+      # manifest. A mismatch publishes one version under another version's
+      # name, and npm has no undo: the wrong number is taken forever and the
+      # GitHub release below would then be cut against a tag describing a
+      # different tree. Cheap to check, impossible to walk back.
+      - name: Assert the tag names the version in package.json
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          tag="${GITHUB_REF_NAME}"
+          if [ "v${version}" != "${tag}" ]; then
+            echo "tag ${tag} does not name package.json version ${version}." >&2
+            exit 1
+          fi
+          echo "tag ${tag} matches package.json ${version}."
+
+      # The server manifest names the npm package AT A VERSION and the MCP
+      # registry resolves that identifier. If it lags the manifest, the
+      # registry entry points at a version that does not exist yet.
+      - name: Assert server.json names the same version
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          top=$(node -p "require('./server.json').version")
+          pkg=$(node -p "require('./server.json').packages[0].version")
+          if [ "$top" != "$version" ] || [ "$pkg" != "$version" ]; then
+            echo "server.json carries ${top}/${pkg}, package.json carries ${version}." >&2
+            exit 1
+          fi
+          echo "server.json matches package.json ${version}."
+
+      - run: npm run build
+
+      # No NODE_AUTH_TOKEN, deliberately. npm reads the OIDC token that
+      # id-token: write mints and exchanges it with the registry itself, so
+      # nothing long-lived sits on this path and this repository holds no
+      # credential to leak.
+      #
+      # The version check below is not defensive tidiness, it is what makes
+      # the first tag work at all. npm will not show a package's Trusted
+      # Publisher section until at least one version exists, so the very
+      # first publish of any package can never come from this workflow
+      # (npm/cli#8544, open). 0.2.0 was therefore published by hand under
+      # 2FA, which mints no token and leaves the trusted-publishing ruling
+      # intact, and the publisher was configured afterwards. Without this
+      # check the tag that follows that bootstrap dies on EPUBLISHCONFLICT
+      # and takes the release cut and the registry submission down with it,
+      # because both of those jobs need this one.
+      - name: Publish, unless this version is already on the registry
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          if npm view "@truealter/mcp-ollama@${version}" version >/dev/null 2>&1; then
+            echo "@truealter/mcp-ollama@${version} is already on npm. Skipping."
+            exit 0
+          fi
+          npm publish --access public --provenance
+
+  github_release:
+    # A reader who arrives from the npm listing lands on this repository, and
+    # until now it has carried no tags and no releases, so the page looked
+    # like nothing had ever been cut from it.
+    #
+    # Separate job rather than a step in the job above, so contents: write
+    # sits only where a release is created and the job holding the identity
+    # that reaches the registry keeps contents read-only.
+    needs: npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Cut the release
+        # Idempotent. A re-run on a version already cut stands down rather
+        # than failing the workflow.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          tag="${GITHUB_REF_NAME}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "release: ${tag} already exists, nothing to cut."
+            exit 0
+          fi
+          notes=$(mktemp)
+          {
+            echo "\`@truealter/mcp-ollama@${version}\` is on npm, with provenance."
+            echo
+            echo '```'
+            echo "npm install -g @truealter/mcp-ollama"
+            echo '```'
+            # This version's CHANGELOG section, keyed on the VERSION rather
+            # than on position. Keying on position takes the newest section,
+            # which is `## [Unreleased]`, so every cut would carry the notes
+            # for work that is not in it.
+            if [ -f CHANGELOG.md ]; then
+              body=$(awk -v v="$version" '$0 ~ "^## \\[" v "\\]" {f=1; next} f && /^## /{exit} f{print}' CHANGELOG.md)
+              if [ -n "$body" ]; then
+                echo
+                echo "$body"
+              fi
+            fi
+          } > "$notes"
+          gh release create "$tag" --title "$tag" --notes-file "$notes" --target "${GITHUB_SHA}"
+          echo "release: cut ${tag} at ${GITHUB_SHA}."
+
+  registry:
+    # The registry entry names the npm package at a version, so it cannot be
+    # submitted before that version exists. Gating on the npm job is what
+    # orders the two; without it a fast submit races its own package and the
+    # registry rejects an identifier it cannot resolve.
+    needs: npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # mcp-publisher's github-oidc provider exchanges this for a registry
+      # token. It proves the workflow runs in a repository owned by
+      # true-alter, which is what authorises the io.github.true-alter
+      # namespace. No secret, same posture as the job above.
+      id-token: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Fetch mcp-publisher
+        run: |
+          set -euo pipefail
+          curl -fsSL -o publisher.tar.gz \
+            "https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz"
+          echo "${MCP_PUBLISHER_SHA256}  publisher.tar.gz" | sha256sum -c -
+          tar -xzf publisher.tar.gz mcp-publisher
+          chmod +x mcp-publisher
+        env:
+          # Pinned, not latest. An unpinned release download makes every run
+          # depend on whatever the registry shipped that morning.
+          MCP_PUBLISHER_VERSION: v1.8.1
+          # A tag is mutable and can be moved to different bytes, so the tag
+          # alone is not a pin. This job holds id-token: write and executes what
+          # it downloads, which is the case where that distinction is worth the
+          # line. Digest measured from the published asset on 2026-09-01.
+          MCP_PUBLISHER_SHA256: a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc
+
+      - name: Submit the entry
+        run: |
+          set -euo pipefail
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish

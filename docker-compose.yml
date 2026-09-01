@@ -1,0 +1,19 @@
+# mcp-ollama speaks MCP over stdin and stdout, so it needs a client on the other
+# end of the pipe. `docker compose up` starts it with nothing attached and it
+# sits there doing nothing. Run it attached instead:
+#
+#   docker compose run --rm -T mcp-ollama
+#
+# The image already sets OLLAMA_HOST to the host gateway and OLLAMA_MODEL to
+# hermes3:8b. MCP_OLLAMA_ALLOW_REMOTE is set here because that gateway address
+# is not loopback from the server's point of view, and the loopback gate would
+# otherwise refuse it at startup.
+
+services:
+  mcp-ollama:
+    build: .
+    stdin_open: true
+    environment:
+      MCP_OLLAMA_ALLOW_REMOTE: "1"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
