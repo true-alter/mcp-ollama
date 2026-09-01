@@ -14,7 +14,7 @@ import { z } from "zod";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve as pathResolve } from "node:path";
 
 // ---------------------------------------------------------------------------
@@ -28,7 +28,14 @@ const RAW_OLLAMA_HOST = process.env.OLLAMA_HOST ?? "http://localhost:11434";
 // remote registry. Operators with a legitimate remote-Ollama deployment must
 // opt in explicitly via MCP_OLLAMA_ALLOW_REMOTE=1.
 {
-  const parsed = new URL(RAW_OLLAMA_HOST);
+  let parsed: URL;
+  try {
+    parsed = new URL(RAW_OLLAMA_HOST);
+  } catch {
+    throw new Error(
+      `OLLAMA_HOST is not a URL (got ${RAW_OLLAMA_HOST}); expected something like http://localhost:11434`
+    );
+  }
   const host = parsed.hostname;
   const isLoopback =
     host === "localhost" || host === "127.0.0.1" || host === "::1";
@@ -42,11 +49,44 @@ const RAW_OLLAMA_HOST = process.env.OLLAMA_HOST ?? "http://localhost:11434";
 const OLLAMA_HOST = RAW_OLLAMA_HOST;
 const DEFAULT_MODEL = process.env.OLLAMA_MODEL ?? "hermes3:8b";
 
-// Model name validation regex - guards against caller-controlled values
-// reaching the Ollama registry pull endpoint. Matches Ollama's published
-// naming conventions (lowercase + dot/underscore/slash/hyphen, leading
-// alnum, max 128 chars).
-const MODEL_NAME_RE = /^[a-z0-9][a-z0-9._/-]{0,127}$/;
+// Model name validation, and the namespace half of it is a security control
+// rather than tidiness. Ollama reads `host/namespace/name` as an alternate
+// REGISTRY, so a name whose first segment contains a dot sends the daemon to
+// fetch a manifest and then blobs from whatever origin the caller named, onto
+// the caller's disk, runnable afterwards. The namespace class below therefore
+// excludes the dot, which is what makes a segment a hostname; the name and tag
+// keep it, because real models are called things like `llama3.2`.
+//
+// The tag is permitted here. Ollama's own documented names carry one, so a
+// pattern without the colon rejects `qwen2.5:14b` and every other ordinary
+// model while accepting a registry host, which is exactly the wrong way round.
+const MODEL_NAME_RE =
+  /^(?:[a-z0-9][a-z0-9_-]*\/)?[a-z0-9][a-z0-9._-]*(?::[a-z0-9][a-z0-9._-]*)?$/;
+const MODEL_NAME_MAX = 128;
+
+// An image path is caller-supplied, so the read is bounded before the bytes are
+// held. 32 MB is well past any real screenshot and well short of what takes the
+// process down, and every image in one call is loaded at once, so the cap is
+// per file and the caller can still pass several.
+const MAX_IMAGE_BYTES = 32 * 1024 * 1024;
+
+function isPngOrJpeg(buf: Buffer): boolean {
+  if (buf.length >= 8 && buf.subarray(0, 8).equals(
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+  )) {
+    return true;
+  }
+  return buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+}
+
+function assertModelName(name: string): void {
+  if (name.length > MODEL_NAME_MAX || !MODEL_NAME_RE.test(name)) {
+    throw new Error(
+      `Invalid model name: expected [namespace/]name[:tag], lowercase, ` +
+        `up to ${MODEL_NAME_MAX} characters, and no registry host`
+    );
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Ollama HTTP client
@@ -805,11 +845,7 @@ This tool handles registry pulls (e.g., 'qwen2.5:14b', 'deepseek-r1:8b').`,
       ),
   },
   async ({ model }) => {
-    if (!MODEL_NAME_RE.test(model)) {
-      throw new Error(
-        `Invalid model name: must match ${MODEL_NAME_RE.source}`
-      );
-    }
+    assertModelName(model);
     const status = await ollamaPull(model);
     return {
       content: [
@@ -903,18 +939,22 @@ downscaling below ~1280px wide makes the model hallucinate data presence.`,
   },
   async ({ images, mode, context, model }) => {
     const chosen = model ?? DEFAULT_VISION_MODEL;
-    // Ollama tags use a colon separator (e.g. qwen2.5vl:7b), which the pull-time
-    // MODEL_NAME_RE omits; permit the colon here while keeping the same
-    // anti-injection shape (lowercase alnum + . _ / - : only).
-    const VISION_MODEL_RE = /^[a-z0-9][a-z0-9._/:-]{0,127}$/;
-    if (!VISION_MODEL_RE.test(chosen)) {
-      throw new Error(
-        `Invalid model name: must match ${VISION_MODEL_RE.source}`
-      );
-    }
+    assertModelName(chosen);
     let encoded: string[];
     try {
-      encoded = images.map((p) => readFileSync(p).toString("base64"));
+      encoded = images.map((p) => {
+        const size = statSync(p).size;
+        if (size > MAX_IMAGE_BYTES) {
+          throw new Error(
+            `${p} is ${size} bytes, over the ${MAX_IMAGE_BYTES} byte limit`
+          );
+        }
+        const buf = readFileSync(p);
+        if (!isPngOrJpeg(buf)) {
+          throw new Error(`${p} is not a PNG or JPEG`);
+        }
+        return buf.toString("base64");
+      });
     } catch (e) {
       throw new Error(
         `Cannot read image: ${e instanceof Error ? e.message : String(e)}`

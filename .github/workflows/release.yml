@@ -184,12 +184,18 @@ jobs:
           set -euo pipefail
           curl -fsSL -o publisher.tar.gz \
             "https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz"
+          echo "${MCP_PUBLISHER_SHA256}  publisher.tar.gz" | sha256sum -c -
           tar -xzf publisher.tar.gz mcp-publisher
           chmod +x mcp-publisher
         env:
           # Pinned, not latest. An unpinned release download makes every run
           # depend on whatever the registry shipped that morning.
           MCP_PUBLISHER_VERSION: v1.8.1
+          # A tag is mutable and can be moved to different bytes, so the tag
+          # alone is not a pin. This job holds id-token: write and executes what
+          # it downloads, which is the case where that distinction is worth the
+          # line. Digest measured from the published asset on 2026-09-01.
+          MCP_PUBLISHER_SHA256: a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc
 
       - name: Submit the entry
         run: |

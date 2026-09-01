@@ -32,10 +32,28 @@ and reachable only by cloning it.
 
 ### Security
 
-- `local_pull` now validates the model-name argument against
-  `^[a-z0-9][a-z0-9._/-]{0,127}$` before forwarding to the Ollama
-  registry, closing a pentest finding where caller-controlled
-  model strings reached the pull endpoint unsanitised.
+- `local_pull` validates the model-name argument before forwarding it to the
+  Ollama daemon, and the validation now rejects a registry host. Ollama reads
+  `host/namespace/name` as an alternate registry, so the first version of this
+  check, which allowed a dot anywhere, let a caller name any origin and have
+  the daemon fetch a manifest and then blobs from it onto the user's disk. The
+  namespace segment no longer admits a dot, which is what makes a segment a
+  hostname. The same edit accepts the tag separator, which the first version
+  omitted, so ordinary names like `qwen2.5:14b` work where they previously did
+  not.
+- `local_vision` bounds what it reads. An image argument is a caller-supplied
+  path, and the tool base64-encoded whatever it was pointed at with no type
+  check and no size limit, so a large file took the process down and any file
+  at all was read. Reads are now capped per file and refused unless the bytes
+  begin with a PNG or JPEG signature.
+- The `@modelcontextprotocol/sdk` floor moves to `^1.23.0`. The SDK accepts
+  zod v4 schemas only from that version, and this package declares zod v4, so
+  a consumer resolving to an older SDK inside the previous range published ten
+  tools with empty argument schemas while reporting a successful handshake.
+  Silent and total, and the committed lockfile meant it never appeared in CI.
+- The registry publisher binary is verified against a pinned digest before it
+  is executed. It was fetched by release tag, which is mutable, in a job that
+  holds `id-token: write`.
 - `OLLAMA_HOST` is now gated to loopback (`localhost` / `127.0.0.1` /
   `::1`) at startup. Operators with a legitimate remote-Ollama
   deployment must opt in explicitly via `MCP_OLLAMA_ALLOW_REMOTE=1`;

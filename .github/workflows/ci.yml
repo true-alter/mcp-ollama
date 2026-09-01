@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+# Nothing here writes anything, so nothing here needs write. Without this block
+# the jobs inherit the organisation default, which is a setting outside this
+# file and can be widened without any change reaching this repository.
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
