@@ -3,7 +3,7 @@
   "name": "io.github.true-alter/mcp-ollama",
   "title": "~alter mcp-ollama",
   "description": "Wraps local Ollama models so bulk generation runs on your own hardware, not a paid API.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "websiteUrl": "https://github.com/true-alter/mcp-ollama#readme",
   "repository": {
     "url": "https://github.com/true-alter/mcp-ollama",
@@ -14,7 +14,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@truealter/mcp-ollama",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "transport": {
         "type": "stdio"
       }

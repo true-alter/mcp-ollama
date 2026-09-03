@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-03
+
+### Removed
+
+- `.disclosure-surfaces.json` and `scripts/loom-verdict.sh`. Both are build and
+  gate apparatus from the tree this repository is cut out of. Neither was
+  referenced anywhere here and nothing here ran either one, so no behaviour
+  changes. They are gone because their presence in a public repository
+  described how the work that produces it is run, which is no part of what this
+  server does.
+
 ## [0.2.0] - 2026-09-01
 
 First release published to npm. Everything below has been in the repository
