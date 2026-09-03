@@ -1,6 +1,12 @@
-# npm publish with provenance for @truealter/mcp-ollama.
+# Staged npm release with provenance for @truealter/mcp-ollama.
 #
-# Triggers on v*.*.* tag push. Pre-requisites for a working publish:
+# THE CUT IS STAGED, NOT PUBLISHED. A tag push stages the version and a
+# maintainer approves it with 2FA before it reaches installers. The reasoning
+# sits on the staging step below rather than being repeated here.
+#
+# Triggers on v*.*.* tag push, and on a hand dispatch, which exists so the MCP
+# registry entry can be submitted after an approval that GitHub never sees.
+# Pre-requisites for a working release:
 #   1. A trusted publisher configured for this package on npmjs.com, naming
 #      this repository and this workflow file. There is no secret to set. The
 #      ruling is that every ~alter package goes to npm through trusted
@@ -8,7 +14,9 @@
 #      disallow tokens" setting on, which closes the token route while
 #      leaving OIDC working.
 #   2. The npm package is registered under @truealter (run `npm access` once).
-#   3. The target version tag is pushed (`git tag -s v0.2.0 && git push --tags`).
+#   3. The target version tag is pushed (`git tag -s v0.2.1 && git push --tags`),
+#      or created through the API, which is what a machine with `tag.gpgsign`
+#      set globally has to do since `git tag` there opens an editor.
 #
 # Actions are pinned to full commit SHAs, to defend against tag-moving
 # supply-chain attacks on the publish path.
@@ -23,6 +31,14 @@ on:
     tags:
       # Exclude pre-release suffixes (v1.0.0-rc1 etc); pre-releases are a separate workflow.
       - 'v[0-9]+.[0-9]+.[0-9]+'
+  # A staged cut does not reach installers until a maintainer approves it with
+  # 2FA, and that approval happens off GitHub, so nothing re-triggers this
+  # workflow afterwards. The registry job below cannot run before the version
+  # is live, so without a hand trigger the MCP registry entry would never be
+  # submitted at all. Every job here stands down idempotently once its work is
+  # done, so a dispatch after approval submits the entry and touches nothing
+  # else.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -45,12 +61,24 @@ jobs:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
-      # npm's OIDC exchange with the registry arrived in 11.5.1, and a Node
-      # image can carry an npm older than that. Pinning the floor here makes a
-      # too-old npm fail at this step, where the message names the cause,
-      # rather than at the step below, where the same fault reads as an
-      # authentication failure and sends the reader hunting for a token.
-      - run: npm install -g npm@^11.5.1
+      # STAGED PUBLISHING'S FLOOR, WHICH IS HIGHER THAN THE EXCHANGE'S. The
+      # OIDC exchange arrived in npm 11.5.1 and run 33718660831 cleared that
+      # floor on npm 11.17.0 while still being refused, so the floor was never
+      # the fault and raising it is not the fix. `npm stage` needs 11.15.0 or
+      # newer, which is why the pin is `latest` rather than `^11.5.1`. The
+      # command is asserted rather than assumed: a too-old npm treats `stage`
+      # as an unknown argument and fails late with a message about the
+      # argument instead of about the version.
+      - name: Meet staged publishing's floor
+        run: |
+          set -euo pipefail
+          npm install -g npm@latest
+          npm --version
+          node --version
+          npm stage --help >/dev/null 2>&1 || {
+            echo "::error::release: this npm has no stage command. Needs 11.15.0 or newer."
+            exit 1
+          }
 
       - run: npm ci
 
@@ -59,7 +87,12 @@ jobs:
       # name, and npm has no undo: the wrong number is taken forever and the
       # GitHub release below would then be cut against a tag describing a
       # different tree. Cheap to check, impossible to walk back.
+      # Skipped on a hand dispatch, where the ref is a branch and there is no
+      # tag to agree with anything. The workflow_dispatch trigger exists to
+      # submit the registry entry after a staged cut is approved, and by then
+      # the tag this step would have checked was already pushed and checked.
       - name: Assert the tag names the version in package.json
+        if: github.ref_type == 'tag'
         run: |
           set -euo pipefail
           version=$(node -p "require('./package.json').version")
@@ -87,10 +120,39 @@ jobs:
 
       - run: npm run build
 
+      - name: Pack
+        run: npm pack
+
       # No NODE_AUTH_TOKEN, deliberately. npm reads the OIDC token that
       # id-token: write mints and exchanges it with the registry itself, so
       # nothing long-lived sits on this path and this repository holds no
       # credential to leak.
+      #
+      # THE CUT IS STAGED, NOT PUBLISHED, AND THAT IS WHAT MAKES IT
+      # AUTHENTICATE. Run 33718660831 failed on its publish step, and only on
+      # that step, with `403 Forbidden - PUT
+      # https://registry.npmjs.org/@truealter%2fmcp-ollama - OIDC permission
+      # denied for this action`. The exchange REACHED the registry and was
+      # refused THERE, on the action, which is why neither the npm floor above
+      # nor the setup-node pin was ever the cause. `true-alter/cli` run
+      # 33466878182 staged `@truealter/cli@0.8.43` green on every step from an
+      # otherwise identical job, zero repository secrets, the same placeholder
+      # NODE_AUTH_TOKEN setup-node writes, the same permissions and no
+      # environment, and it is the only shape in this estate observed to
+      # authenticate. Anchor: ruling-if-the-sdk-oidc-exchange-is-refused-the-
+      # sdk-takes-the-clis-staged-shape-rather-than-a-dashboard-guess-
+      # 2026-09-03, applied here on ~blake's own selection of 2026-09-03.
+      #
+      # IT CHANGES RELEASE SEMANTICS AND THAT IS ACCEPTED. A staged cut is not
+      # live until a maintainer approves it with 2FA, so every release now
+      # waits on a human. Stated as the cost of the shape rather than
+      # discovered afterwards.
+      #
+      # IDEMPOTENT ON THE LIVE SIDE ONLY. A version already sitting in the
+      # stage is not handled, deliberately: `npm stage list`'s output shape
+      # has not been observed from this repository, and inventing a parse for
+      # it would be a guess in the one step that must not guess. A duplicate
+      # stage fails with the registry's own message, which is legible.
       #
       # The version check below is not defensive tidiness, it is what makes
       # the first tag work at all. npm will not show a package's Trusted
@@ -102,7 +164,7 @@ jobs:
       # check the tag that follows that bootstrap dies on EPUBLISHCONFLICT
       # and takes the release cut and the registry submission down with it,
       # because both of those jobs need this one.
-      - name: Publish, unless this version is already on the registry
+      - name: Stage the cut for approval, unless this version is already live
         run: |
           set -euo pipefail
           version=$(node -p "require('./package.json').version")
@@ -110,7 +172,31 @@ jobs:
             echo "@truealter/mcp-ollama@${version} is already on npm. Skipping."
             exit 0
           fi
-          npm publish --access public --provenance
+          tarball=$(ls truealter-mcp-ollama-*.tgz)
+          npm stage publish "$tarball" --access public --provenance --tag latest
+          echo "release: staged ${version} with tag latest. It is NOT live until approved with 2FA."
+
+      - name: Say what is now waiting on a human
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          if npm view "@truealter/mcp-ollama@${version}" version >/dev/null 2>&1; then
+            exit 0
+          fi
+          {
+            echo "### @truealter/mcp-ollama ${version} is staged, not published"
+            echo
+            echo "It reaches installers only when you approve it with 2FA:"
+            echo
+            echo '```'
+            echo "npm stage list @truealter/mcp-ollama"
+            echo "npm stage view <stage-id>       # inspect before approving"
+            echo "npm stage approve <stage-id>    # prompts for 2FA, publishes"
+            echo "npm stage reject <stage-id>     # discard"
+            echo '```'
+            echo
+            echo "Then re-run this workflow from the Actions tab to submit the MCP registry entry."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   github_release:
     # A reader who arrives from the npm listing lands on this repository, and
@@ -130,19 +216,35 @@ jobs:
       - name: Cut the release
         # Idempotent. A re-run on a version already cut stands down rather
         # than failing the workflow.
+        #
+        # The tag is derived from package.json rather than from
+        # GITHUB_REF_NAME, because a hand dispatch runs on a branch and that
+        # variable would then read `main`. On a tag run the assertion in the
+        # npm job has already proved the two agree, so this is the same value
+        # by a route that survives both triggers.
+        #
+        # The release is cut even though the npm cut is only STAGED. The tag
+        # records which source was cut, which is true the moment the tag lands
+        # and stays true whether or not the stage is approved, and the body
+        # says plainly that installers do not have it yet.
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           version=$(node -p "require('./package.json').version")
-          tag="${GITHUB_REF_NAME}"
+          tag="v${version}"
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "release: ${tag} already exists, nothing to cut."
             exit 0
           fi
+          if npm view "@truealter/mcp-ollama@${version}" version >/dev/null 2>&1; then
+            state="is on npm, with provenance."
+          else
+            state="is staged on npm and reaches installers when a maintainer approves it with 2FA."
+          fi
           notes=$(mktemp)
           {
-            echo "\`@truealter/mcp-ollama@${version}\` is on npm, with provenance."
+            echo "\`@truealter/mcp-ollama@${version}\` ${state}"
             echo
             echo '```'
             echo "npm install -g @truealter/mcp-ollama"
@@ -162,11 +264,44 @@ jobs:
           gh release create "$tag" --title "$tag" --notes-file "$notes" --target "${GITHUB_SHA}"
           echo "release: cut ${tag} at ${GITHUB_SHA}."
 
+      - name: Correct the notes once the stage is approved
+        # A release cut against a staged version says installers do not have
+        # it yet, and that sentence stops being true the moment somebody
+        # approves the stage. Nothing else would ever go back and fix it, so
+        # the hand dispatch that submits the registry entry repairs the page a
+        # reader actually lands on. Runs only when the release exists AND the
+        # version is live AND the body still carries the staged sentence.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          tag="v${version}"
+          gh release view "$tag" >/dev/null 2>&1 || exit 0
+          npm view "@truealter/mcp-ollama@${version}" version >/dev/null 2>&1 || exit 0
+          body=$(gh release view "$tag" --json body --jq '.body')
+          case "$body" in
+            *"approves it with 2FA"*) ;;
+            *) echo "release: ${tag} notes already read as live, nothing to correct."; exit 0 ;;
+          esac
+          printf '%s\n' "$body" \
+            | sed 's/is staged on npm and reaches installers when a maintainer approves it with 2FA\./is on npm, with provenance./' \
+            > corrected-notes.md
+          gh release edit "$tag" --notes-file corrected-notes.md
+          echo "release: ${tag} notes corrected to say the version is live."
+
   registry:
     # The registry entry names the npm package at a version, so it cannot be
     # submitted before that version exists. Gating on the npm job is what
     # orders the two; without it a fast submit races its own package and the
     # registry rejects an identifier it cannot resolve.
+    #
+    # STAGING BREAKS THAT ORDERING AND THE GUARD BELOW IS WHY IT IS SAFE. The
+    # npm job now stages rather than publishes, so it goes green while the
+    # version is still not resolvable, and a submit on that run would be
+    # rejected for an identifier the registry genuinely cannot see. The guard
+    # stands the job down instead of failing it, and the hand dispatch after
+    # approval is what actually submits.
     needs: npm
     runs-on: ubuntu-latest
     permissions:
@@ -179,7 +314,27 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
+      - name: Is the version this entry names actually live yet
+        id: live
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          if npm view "@truealter/mcp-ollama@${version}" version >/dev/null 2>&1; then
+            echo "live=true" >> "$GITHUB_OUTPUT"
+            echo "registry: ${version} is live, submitting the entry."
+          else
+            echo "live=false" >> "$GITHUB_OUTPUT"
+            echo "registry: ${version} is staged, not live. The entry names a version the registry cannot resolve, so this stands down."
+            {
+              echo "### MCP registry entry NOT submitted"
+              echo
+              echo "\`@truealter/mcp-ollama@${version}\` is staged, not live, so the registry cannot resolve it."
+              echo "Approve the stage with 2FA, then re-run this workflow from the Actions tab."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Fetch mcp-publisher
+        if: steps.live.outputs.live == 'true'
         run: |
           set -euo pipefail
           curl -fsSL -o publisher.tar.gz \
@@ -198,6 +353,7 @@ jobs:
           MCP_PUBLISHER_SHA256: a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc
 
       - name: Submit the entry
+        if: steps.live.outputs.live == 'true'
         run: |
           set -euo pipefail
           ./mcp-publisher login github-oidc
