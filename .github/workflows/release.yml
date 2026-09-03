@@ -164,17 +164,55 @@ jobs:
       # check the tag that follows that bootstrap dies on EPUBLISHCONFLICT
       # and takes the release cut and the registry submission down with it,
       # because both of those jobs need this one.
+      #
+      # THE EXCHANGE ASSERTION IS NOT DEBUG RESIDUE. npm attempts the OIDC
+      # exchange unconditionally and is written never to throw: every way it
+      # can fail returns undefined behind a `log.verbose` line a default run
+      # never prints. setup-node writes an .npmrc reading
+      # //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN} and, with no
+      # secret to fill it, sets that variable to the literal placeholder
+      # XXXXX-XXXXX-XXXXX-XXXXX, so a refused exchange does not stop the step.
+      # It falls through to an unauthenticated PUT and the registry answers
+      # `404 Not Found - PUT` on a package that is plainly there. That second
+      # failure, which describes the retry rather than the fault, cost three
+      # sessions across two days on @truealter/sdk.
+      #
+      # TWO REFUSAL SHAPES, BOTH OBSERVED, AND THIS PACKAGE PRODUCED THE
+      # SECOND ONE. @truealter/sdk printed `Failed token exchange request ...
+      # package not found` and fell through silently. THIS package was refused
+      # with `403 Forbidden - OIDC permission denied for this action`, which
+      # is loud but is a different string, so a matcher carrying only the
+      # first pattern would have said nothing about our own history. Neither
+      # string is invented here.
+      #
+      # `set -e` is DELIBERATELY ABSENT. With it the step dies on npm's own
+      # exit before the capture is read, so the assertion never runs and this
+      # whole block is decoration. Anchor: finding-the-sdk-oidc-exchange-404s-
+      # package-not-found-while-mcp-ollama-403s-permission-denied-so-the-two-
+      # refusals-are-different-and-the-staged-shape-answers-only-one-
+      # 2026-09-03, which records this rung as owed.
       - name: Stage the cut for approval, unless this version is already live
         run: |
-          set -euo pipefail
+          set -uo pipefail
           version=$(node -p "require('./package.json').version")
           if npm view "@truealter/mcp-ollama@${version}" version >/dev/null 2>&1; then
             echo "@truealter/mcp-ollama@${version} is already on npm. Skipping."
             exit 0
           fi
           tarball=$(ls truealter-mcp-ollama-*.tgz)
-          npm stage publish "$tarball" --access public --provenance --tag latest
-          echo "release: staged ${version} with tag latest. It is NOT live until approved with 2FA."
+          status=0
+          npm stage publish "$tarball" --access public --provenance --tag latest \
+            --loglevel verbose > stage.log 2>&1 || status=$?
+          cat stage.log
+          if grep -qE 'Failed token exchange request|OIDC permission denied' stage.log; then
+            line=$(grep -m1 -E 'Failed token exchange request|OIDC permission denied' stage.log)
+            echo "::error::release: the registry REFUSED the OIDC exchange, so any status below describes npm's unauthenticated retry rather than the fault. ${line}"
+            exit 1
+          fi
+          if [ "$status" -eq 0 ]; then
+            echo "release: staged ${version} with tag latest. It is NOT live until approved with 2FA."
+          fi
+          exit "$status"
 
       - name: Say what is now waiting on a human
         run: |
