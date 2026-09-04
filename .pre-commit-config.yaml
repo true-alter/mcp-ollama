@@ -1,0 +1,17 @@
+repos:
+
+  # Release-cut check. Every place this repo names its version has to agree,
+  # and the version needs a changelog heading. Blocking, because a cut that
+  # disagrees with itself has already been pushed by the time CI says so: on
+  # 2026-09-04 mcp-ollama 0.2.2 reached a pull request with server.json still
+  # reading 0.2.1, which is what the MCP registry resolves.
+  # Kept in step with the monorepo copy by scripts/install-release-cut-check.sh.
+  - repo: local
+    hooks:
+      - id: release-cut-check
+        name: release-cut-check
+        entry: scripts/release-cut-check.py --dir .
+        language: system
+        pass_filenames: false
+        files: '(^|/)(package\.json|package-lock\.json|server\.json|manifest\.json|pyproject\.toml|Cargo\.toml|CHANGELOG\.md)$'
+        exclude: 'node_modules/'
