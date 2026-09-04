@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-09-04
+
+### Fixed
+
+- The `author` field read `Alter Meridian Pty Ltd (ABN 54 696 662 049)`. npm's
+  author string is `Name <email> (url)`, so the parenthetical lands in the URL
+  slot, and the published record for 0.2.1 served
+  `{"name":"Alter Meridian Pty Ltd","url":"ABN 54 696 662 049"}`. A client
+  rendering the author as a link rendered that. The ruling of 2026-08-31 gives
+  the form, `Alter Meridian Pty Ltd` at `hey@truealter.com` and no personal
+  name, so the contact address now sits in the slot npm reads it from and the
+  company number comes out rather than moving.
+
 ## [0.2.1] - 2026-09-03
 
 ### Removed

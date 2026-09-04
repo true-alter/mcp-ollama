@@ -1,6 +1,6 @@
 {
   "name": "@truealter/mcp-ollama",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "mcpName": "io.github.true-alter/mcp-ollama",
   "description": "MCP server wrapping local Ollama models - offload bulk generation, summarisation, classification, and code tasks from API-priced orchestrators to a model running on the user's own hardware.",
   "type": "module",
@@ -40,7 +40,7 @@
     "routing"
   ],
   "license": "Apache-2.0",
-  "author": "Alter Meridian Pty Ltd (ABN 54 696 662 049)",
+  "author": "Alter Meridian Pty Ltd <hey@truealter.com>",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/true-alter/mcp-ollama.git"
