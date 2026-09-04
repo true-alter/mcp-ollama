@@ -40,7 +40,7 @@
     "routing"
   ],
   "license": "Apache-2.0",
-  "author": "Alter Meridian Pty Ltd (ABN 54 696 662 049)",
+  "author": "Alter Meridian Pty Ltd <hey@truealter.com>",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/true-alter/mcp-ollama.git"
